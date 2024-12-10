@@ -188,12 +188,45 @@ class Backtesting:
             ports.append(full_port)
         return ports, pd.DataFrame(history)
 
+    def buy_and_hold(self, initial, weight, tc):
+        df = self.get_data()
+        df['bnh'] = 0
+        df.loc[df.index[0], 'bnh'] = 1
+        df.loc[df.index[-1], 'bnh'] = -1
+        tc = tc/100
+        cash = weight*initial
+        position = 0
+        shares = 0
+        hist = []
+        bench = []
+        for index, row in df.iterrows():
+            date = index
+            price = row['Adj Close']
+            signal = row['bnh']
+            if signal == 1 and position == 0:
+                new_shares = cash //(price*(1+tc))
+                cash -= new_shares*price*(1+tc)
+                shares += new_shares
+                position = 1
+                port = cash + shares*price
+            elif signal == -1 and position == 1:
+                cash += shares*price*(1-tc)
+                shares = 0
+                position = 0
+                port = cash
+            full_port = cash + shares*price
+            bench.append(full_port)
+        return bench
+        
 
     def port_plot_sma(self, initial, weight, tc, window):
         x = self.generate_signal_sma(window)
+        bench = self.buy_and_hold(initial, weight, tc)
         port, _ = self.execute_trade_sma(initial, weight, tc, window)
         fig, ax = plt.subplots(2,1, figsize=(8,8))
-        ax[0].plot(x.index, port)
+        ax[0].plot(x.index, port, label = f'{strat}')
+        ax[0].plot(x.index, bench, label='Buy and Hold')
+        ax[0].legend()
         ax[0].set_title('Portfolio Value')
         ax[0].grid()
         ax[1].plot(x['Adj Close'])
@@ -207,9 +240,12 @@ class Backtesting:
 
     def port_plot_rsi(self, initial, weight, tc, window):
         x = self.generate_signal_rsi(window)
-        port, _ = self.execute_trade_rsi(initial, weight, tc, window)
+        bench = self.buy_and_hold(initial, weight, tc)
+        port, _ = self.execute_trade_sma(initial, weight, tc, window)
         fig, ax = plt.subplots(3,1, figsize=(8,8))
-        ax[0].plot(x.index, port)
+        ax[0].plot(x.index, port, label = f'{strat}')
+        ax[0].plot(x.index, bench, label='Buy and Hold')
+        ax[0].legend()
         ax[0].grid()
         ax[0].set_title('Portfolio Value')
         ax[1].plot(x['Adj Close'])
@@ -226,9 +262,12 @@ class Backtesting:
     
     def port_plot_bbands(self, initial, weight, tc, window):
         x = self.generate_signal_bbands(window)
-        port, _ = self.execute_trade_bbands(initial, weight, tc, window)
+        bench = self.buy_and_hold(initial, weight, tc)
+        port, _ = self.execute_trade_sma(initial, weight, tc, window)
         fig, ax = plt.subplots(2,1, figsize=(8,8))
-        ax[0].plot(x.index, port)
+        ax[0].plot(x.index, port, label = f'{strat}')
+        ax[0].plot(x.index, bench, label='Buy and Hold')
+        ax[0].legend()
         ax[0].set_title('Portfolio Value')
         ax[0].grid()
         ax[1].plot(x['Adj Close'])
@@ -261,15 +300,14 @@ if strat == '20 Day Moving Average':
     fig = data.port_plot_sma(10000,1,tran_cost,20)
     st.pyplot(fig)
     st.write('This table summarises all trades.')
+
     st.write(hist)
-    
 elif strat == '14 Day RSI':
     port, hist = data.execute_trade_rsi(10000,1,tran_cost,14)
     fig = data.port_plot_rsi(10000,1,tran_cost,14)
     st.pyplot(fig)
     st.write('This table summarises all trades.')
     st.write(hist)
-    
 elif strat == 'Bollinger bands':
     port, hist = data.execute_trade_bbands(10000,1,tran_cost,14)
     fig = data.port_plot_bbands(10000,1,tran_cost,14)
