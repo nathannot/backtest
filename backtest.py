@@ -260,13 +260,16 @@ if strat == '20 Day Moving Average':
     port, hist = data.execute_trade_sma(10000,1,tran_cost,20)
     fig = data.port_plot_sma(10000,1,tran_cost,20)
     st.pyplot(fig)
+    st.write('This table summarises all trades.')
     st.write(hist)
+    
 elif strat == '14 Day RSI':
     port, hist = data.execute_trade_rsi(10000,1,tran_cost,14)
     fig = data.port_plot_rsi(10000,1,tran_cost,14)
     st.pyplot(fig)
     st.write('This table summarises all trades.')
     st.write(hist)
+    
 elif strat == 'Bollinger bands':
     port, hist = data.execute_trade_bbands(10000,1,tran_cost,14)
     fig = data.port_plot_bbands(10000,1,tran_cost,14)
