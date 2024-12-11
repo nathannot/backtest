@@ -24,6 +24,16 @@ class Backtesting:
         df.loc[(df['signal']==0)&(df['signal'].shift(1)==1),'signal'] = -1
         return df
     
+    def generate_signal_ma_cross(self):
+        df = self.get_data()
+        df = df.copy()
+        df['sma20'] = df['Adj Close'].rolling(20).mean()
+        df['sma50'] = df['Adj Close'].rolling(50).mean()
+        df['signal'] = 0
+        df.loc[(df['sma20']>df['sma50'])&(df['sma20'].shift(1)<df['sma50'].shift(1)),'signal'] = 1
+        df.loc[(df['sma50']>df['sma20'])&(df['sma20'].shift(1)>df['sma50'].shift(1)),'signal'] = -1
+        return df
+    
     def generate_signal_rsi(self, window):
         df = self.get_data()
         rets = df.diff().dropna()
@@ -188,6 +198,49 @@ class Backtesting:
             ports.append(full_port)
         return ports, pd.DataFrame(history)
 
+    def execute_trade_ma_cross(self,initial, weight, tc):
+        x = self.generate_signal_ma_cross()
+        tc = tc/100
+        cash = weight*initial
+        shares = 0
+        history = []
+        ports = []
+        position = 0
+
+        for index, row in x.iterrows():
+            date = index
+            price = row['Adj Close']
+            signal = row['signal']
+
+            if signal == 1 and position == 0:
+                num_shares = cash // (price*(1+tc))
+                cash -= num_shares*price*(1+tc)
+                shares += num_shares
+                t_cost = tc*price*num_shares
+                position = 1
+                port = cash+shares*price
+                history.append({'Date':date,
+                                'Price':price,
+                                'Type': 'buy',
+                                'shares': shares,
+                                'Portfolio':port,
+                                'Transaction cost':t_cost})
+            elif signal == -1 and position == 1:
+                cash += shares*price*(1-tc)
+                t_cost = shares*(price*tc)
+                shares = 0
+                position = 0
+                port = cash
+                history.append({'Date':date,
+                                'Price':price,
+                                'Type': 'sell',
+                                'shares': shares,
+                                'Portfolio':port,
+                                'Transaction cost':t_cost})
+            full_port = cash+price*shares
+            ports.append(full_port)
+        return ports, pd.DataFrame(history)
+
     def buy_and_hold(self, initial, weight, tc):
         df = self.get_data()
         df['bnh'] = 0
@@ -231,6 +284,26 @@ class Backtesting:
         ax[0].grid()
         ax[1].plot(x['Adj Close'])
         ax[1].plot(x['sma'], label='20 day moving average')
+        ax[1].set_title(f'Price of {ticker}')
+        ax[1].legend()
+        ax[1].grid()
+        plt.tight_layout()
+        plt.show()
+        return fig
+    
+    def port_plot_cross_ma(self, initial, weight, tc):
+        x = self.generate_signal_ma_cross()
+        bench = self.buy_and_hold(initial, weight, tc)
+        port, _ = self.execute_trade_ma_cross(initial, weight, tc)
+        fig, ax = plt.subplots(2,1, figsize=(8,8))
+        ax[0].plot(x.index, port, label = f'{strat}')
+        ax[0].plot(x.index, bench, label='Buy and Hold')
+        ax[0].legend()
+        ax[0].set_title('Portfolio Value')
+        ax[0].grid()
+        ax[1].plot(x['Adj Close'])
+        ax[1].plot(x['sma20'], label='20 day moving average')
+        ax[1].plot(x['sma50'], label='50 day moving average')
         ax[1].set_title(f'Price of {ticker}')
         ax[1].legend()
         ax[1].grid()
@@ -286,14 +359,14 @@ ticker = st.selectbox('Choose from following stocks',
                        'amzn','nflx'))
 
 start = st.date_input('Select start date', value=datetime(2023,1,1))
-finish = st.date_input('Select end date',value = start+pd.Timedelta(days=365), min_value = start+pd.Timedelta(days=252))
+finish = st.date_input('Select end date',value = datetime(2024,1,1), min_value = start+pd.Timedelta(days=252))
 data = Backtesting(ticker, start, finish)
 
 strat = st.selectbox('Select from following strategies',
                      ('20 Day Moving Average','14 Day RSI',
-                      'Bollinger bands'))
+                      'Bollinger bands', '20-50 Day Moving Average Cross'))
 
-tran_cost = st.slider('Select transaction cost %', min_value=0.0, max_value = 5.0, step=0.5)
+tran_cost = st.slider('Select transaction cost %', value=0.5, min_value=0.0, max_value = 5.0, step=0.1)
 st.write(f'Backtest $10000 portfolio for {ticker}')
 if strat == '20 Day Moving Average':
     port, hist = data.execute_trade_sma(10000,1,tran_cost,20)
@@ -314,5 +387,10 @@ elif strat == 'Bollinger bands':
     st.pyplot(fig)
     st.write('This table summarises all trades.')
     st.write(hist)
-
+elif strat == '20-50 Day Moving Average Cross':
+    port, hist = data.execute_trade_ma_cross(10000,1,tran_cost)
+    fig = data.port_plot_cross_ma(10000,1,tran_cost)
+    st.pyplot(fig)
+    st.write('This table summarises all trades.')
+    st.write(hist)
 
