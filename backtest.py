@@ -286,7 +286,7 @@ ticker = st.selectbox('Choose from following stocks',
                        'amzn','nflx'))
 
 start = st.date_input('Select start date', value=datetime(2023,1,1))
-finish = st.date_input('Select end date',value = datetime(2024,1,1), min_value = start+pd.Timedelta(days=252))
+finish = st.date_input('Select end date',value = start+pd.Timedelta(days=365), min_value = start+pd.Timedelta(days=252))
 data = Backtesting(ticker, start, finish)
 
 strat = st.selectbox('Select from following strategies',
