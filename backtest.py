@@ -12,7 +12,7 @@ class Backtesting:
         self.end = end
 
     def get_data(self):
-        x = yf.download(self.ticker,self.start, self.end, progress=False)[['Adj Close']]
+        x = yf.download(self.ticker,self.start, self.end, progress=False)[['Close']]
         return x
     
     def generate_signal_sma(self, window):
