@@ -18,8 +18,8 @@ class Backtesting:
     def generate_signal_sma(self, window):
         df = self.get_data()
         df = df.copy()
-        df['sma'] = df['Adj Close'].rolling(window).mean()
-        df['signal'] = (df['Adj Close']> df['sma']).astype(int)
+        df['sma'] = df['Close'].rolling(window).mean()
+        df['signal'] = (df['Close']> df['sma']).astype(int)
         df.loc[(df['signal']==1)&(df['signal'].shift(1)==0),'signal'] = 2
         df.loc[(df['signal']==0)&(df['signal'].shift(1)==1),'signal'] = -1
         return df
@@ -27,8 +27,8 @@ class Backtesting:
     def generate_signal_ma_cross(self):
         df = self.get_data()
         df = df.copy()
-        df['sma20'] = df['Adj Close'].rolling(20).mean()
-        df['sma50'] = df['Adj Close'].rolling(50).mean()
+        df['sma20'] = df['Close'].rolling(20).mean()
+        df['sma50'] = df['Close'].rolling(50).mean()
         df['signal'] = 0
         df.loc[(df['sma20']>df['sma50'])&(df['sma20'].shift(1)<df['sma50'].shift(1)),'signal'] = 1
         df.loc[(df['sma50']>df['sma20'])&(df['sma20'].shift(1)>df['sma50'].shift(1)),'signal'] = -1
@@ -59,15 +59,15 @@ class Backtesting:
     
     def generate_signal_bbands(self, window):
         df = self.get_data()
-        roll_mean = df['Adj Close'].rolling(window).mean()
-        roll_std = df['Adj Close'].rolling(window).std()
+        roll_mean = df['Close'].rolling(window).mean()
+        roll_std = df['Close'].rolling(window).std()
         df['bband_upper'] = roll_mean+2*roll_std
         df['bband_lower'] = roll_mean - 2*roll_std
         df['signal'] = 0
-        df.loc[(df['Adj Close']>df['bband_lower'])&
-               (df['Adj Close'].shift(1)<df['bband_lower'].shift(1)),'signal'] = 1
-        df.loc[(df['Adj Close']>df['bband_upper'])&
-               (df['Adj Close'].shift(1)<df['bband_upper'].shift(1)), 'signal'] = -1
+        df.loc[(df['Close']>df['bband_lower'])&
+               (df['Close'].shift(1)<df['bband_lower'].shift(1)),'signal'] = 1
+        df.loc[(df['Close']>df['bband_upper'])&
+               (df['Close'].shift(1)<df['bband_upper'].shift(1)), 'signal'] = -1
         return df
     
     def execute_trade_sma(self, initial, weight, tc, window):
@@ -80,7 +80,7 @@ class Backtesting:
         ports = []
         for index, row in x.iterrows():
             date = index
-            price = row['Adj Close']
+            price = row['Close']
             signal = row['signal']
     
             if signal == 2 and position == 0:
@@ -125,7 +125,7 @@ class Backtesting:
 
         for index, row in x.iterrows():
             date = index
-            price = row['Adj Close']
+            price = row['Close']
             signal = row['signal']
 
             if signal == 1 and position == 0:
@@ -167,7 +167,7 @@ class Backtesting:
         ports = []
         for index, row in x.iterrows():
             date = index
-            price = row['Adj Close']
+            price = row['Close']
             signal = row['signal']
             if signal == 1 and position == 0:
                 num_shares = cash // (price*(1+tc))
@@ -209,7 +209,7 @@ class Backtesting:
 
         for index, row in x.iterrows():
             date = index
-            price = row['Adj Close']
+            price = row['Close']
             signal = row['signal']
 
             if signal == 1 and position == 0:
@@ -254,7 +254,7 @@ class Backtesting:
         bench = []
         for index, row in df.iterrows():
             date = index
-            price = row['Adj Close']
+            price = row['Close']
             signal = row['bnh']
             if signal == 1 and position == 0:
                 new_shares = cash //(price*(1+tc))
@@ -282,7 +282,7 @@ class Backtesting:
         ax[0].legend()
         ax[0].set_title('Portfolio Value')
         ax[0].grid()
-        ax[1].plot(x['Adj Close'])
+        ax[1].plot(x['Close'])
         ax[1].plot(x['sma'], label='20 day moving average')
         ax[1].set_title(f'Price of {ticker}')
         ax[1].legend()
@@ -301,7 +301,7 @@ class Backtesting:
         ax[0].legend()
         ax[0].set_title('Portfolio Value')
         ax[0].grid()
-        ax[1].plot(x['Adj Close'])
+        ax[1].plot(x['Close'])
         ax[1].plot(x['sma20'], label='20 day moving average')
         ax[1].plot(x['sma50'], label='50 day moving average')
         ax[1].set_title(f'Price of {ticker}')
@@ -321,7 +321,7 @@ class Backtesting:
         ax[0].legend()
         ax[0].grid()
         ax[0].set_title('Portfolio Value')
-        ax[1].plot(x['Adj Close'])
+        ax[1].plot(x['Close'])
         ax[1].set_title(f'Price of {ticker}')
         ax[1].grid()
         ax[2].plot(x['rsi'])
@@ -343,7 +343,7 @@ class Backtesting:
         ax[0].legend()
         ax[0].set_title('Portfolio Value')
         ax[0].grid()
-        ax[1].plot(x['Adj Close'])
+        ax[1].plot(x['Close'])
         ax[1].plot(x['bband_upper'], color='r',lw=0.3, label='Upper Bollinger Band')
         ax[1].plot(x['bband_lower'], color='r',lw=0.3, label='Lower Bollinger Band')
         ax[1].set_title(f'Price of {ticker}')
